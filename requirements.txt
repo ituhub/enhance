@@ -22,4 +22,4 @@ hmmlearn
 torchdiffeq
 shimmy>=2.0
 transformers
-
+stable-baselines3
