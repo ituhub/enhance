@@ -3,6 +3,7 @@ import joblib
 import requests
 import pandas as pd
 import numpy as np
+import torch
 
 # Scaling
 from sklearn.preprocessing import MinMaxScaler
@@ -143,18 +144,25 @@ def fetch_news_data():
 # =============================================================================
 # 3) Sentiment Analysis of News Headlines
 # =============================================================================
-
-
 def compute_sentiment_score(headlines):
     """
-    Compute average sentiment polarity of the news headlines using BERT transformer.
+    Compute average sentiment polarity of the news headlines using a lightweight BERT transformer.
+    Compatible with Streamlit Cloud by forcing the PyTorch backend.
     """
     if not headlines:
         return 0  # Neutral sentiment if no headlines
 
-    # Initialize the sentiment analyzer
-    sentiment_analyzer = pipeline(
-        'sentiment-analysis')  # Using BERT transformer
+    try:
+        sentiment_analyzer = pipeline(
+            'sentiment-analysis',
+            model="distilbert-base-uncased-finetuned-sst-2-english",
+            framework="pt",  # Use PyTorch to ensure compatibility
+            device=0 if torch.cuda.is_available() else -1
+        )
+    except Exception as e:
+        st.warning("⚠️ Sentiment model could not be loaded. Setting neutral sentiment.")
+        print(f"[ERROR] Sentiment model loading failed: {e}")
+        return 0
 
     sentiment_scores = []
 
@@ -168,11 +176,10 @@ def compute_sentiment_score(headlines):
             else:
                 sentiment_scores.append(0)
         except Exception as e:
-            st.warning(f"Error analyzing sentiment for headline: {headline}. Error: {e}")
+            st.warning(f"Error analyzing sentiment for headline: '{headline}'. Skipping.")
             sentiment_scores.append(0)
 
-    average_sentiment = np.mean(sentiment_scores)
-    return average_sentiment
+    return np.mean(sentiment_scores) if sentiment_scores else 0
 
 # =============================================================================
 # 4) Indicator Computations (Advanced Feature Engineering)
