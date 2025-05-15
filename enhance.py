@@ -796,34 +796,35 @@ def main():
             model_predictions = []
 
             for rl_algorithm, algo_cls in [('A2C', A2C), ('PPO', PPO), ('DDPG', DDPG)]:
-                model_path = os.path.join(
-                    "models", f"{ticker}_{rl_algorithm}_rl_trading_agent.zip")
+                try:
+                    model_path = os.path.join(
+                        "models", f"{ticker}_{rl_algorithm}_rl_trading_agent.zip")
 
-                # ---------- NEW ----------
-                model = safe_load(model_path, algo_cls)
-                if model is None:          # skip tickers whose model couldn’t be opened
+                    # ---------- NEW ----------
+                    model = safe_load(model_path, algo_cls)
+                    if model is None:          # skip tickers whose model couldn’t be opened
+                        continue
+                    # ---------- END NEW ------
+
+                    # Get the latest data point
+                    latest_data = data_scaled.iloc[-1]
+
+                    # Predict
+                    action_value = get_action_value(
+                        model, latest_data, sentiment_score, economic_indicator)
+
+                    decision, confidence = map_action_to_decision_confidence(action_value)
+
+                    model_predictions.append({
+                        'Model': rl_algorithm,
+                        'Action Value': action_value,
+                        'Decision': decision,
+                        'Confidence': confidence
+                    })
+
+                except (ValueError, FileNotFoundError, OSError) as e:
+                    st.warning(f"Model file {model_path} could not be loaded: {e}")
                     continue
-                # ---------- END NEW ------
-
-                # Get the latest data point
-                latest_data = data_scaled.iloc[-1]
-
-                # Predict
-                action_value = get_action_value(
-                    model, latest_data, sentiment_score, economic_indicator)
-
-                decision, confidence = map_action_to_decision_confidence(action_value)
-
-                model_predictions.append({
-                    'Model': rl_algorithm,
-                    'Action Value': action_value,
-                    'Decision': decision,
-                    'Confidence': confidence
-                })
-
-            except (ValueError, FileNotFoundError) as e:
-                st.warning(f"Model file {model_path} could not be loaded: {e}")
-                continue
 
             if not model_predictions:
                 # If no predictions were made
