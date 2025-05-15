@@ -30,6 +30,24 @@ from tensorflow.keras.layers import Input, Dense, LayerNormalization, Dropout, M
 # Sentiment Analysis
 from transformers import pipeline  # Import pipeline from transformers
 
+# --------------------------------------------------------------------
+# Helper: always load SB3 models onto CPU-only runtimes
+# --------------------------------------------------------------------
+def safe_load(path, algo_cls):
+    """
+    Load a Stable-Baselines3 model on CPU.
+
+    Forces device='cpu' so CUDA-trained checkpoints do not crash
+    on Streamlit Cloud’s CPU build of PyTorch.
+    """
+    try:
+        return algo_cls.load(path, device='cpu')
+    except FileNotFoundError:
+        st.warning(f"Model file not found: {path}")
+    except Exception as e:
+        st.error(f"Could not load {path}: {e}")
+    return None
+
 # =============================================================================
 # 1) Data Fetching
 # =============================================================================
@@ -777,42 +795,35 @@ def main():
             # Initialize a list to hold the predictions from different models
             model_predictions = []
 
-            for rl_algorithm in ['A2C', 'PPO', 'DDPG']:
+            for rl_algorithm, algo_cls in [('A2C', A2C), ('PPO', PPO), ('DDPG', DDPG)]:
                 model_path = os.path.join(
                     "models", f"{ticker}_{rl_algorithm}_rl_trading_agent.zip")
 
-                try:
-                    # Load the model
-                    if rl_algorithm == "A2C":
-                        model = A2C.load(model_path)
-                    elif rl_algorithm == "PPO":
-                        model = PPO.load(model_path)
-                    elif rl_algorithm == "DDPG":
-                        model = DDPG.load(model_path)
-
-                    # Get the latest data point
-                    latest_data = data_scaled.iloc[-1]
-
-                    # Get action value from the model
-                    action_value = get_action_value(
-                        model, latest_data, sentiment_score, economic_indicator)
-
-                    # Map action value to decision and confidence
-                    decision, confidence = map_action_to_decision_confidence(
-                        action_value)
-
-                    # Store the recommendation from this model
-                    model_predictions.append({
-                        'Model': rl_algorithm,
-                        'Action Value': action_value,
-                        'Decision': decision,
-                        'Confidence': confidence
-                    })
-
-                except (ValueError, FileNotFoundError) as e:
-                    st.warning(
-                        f"Model file {model_path} could not be loaded: {e}")
+                # ---------- NEW ----------
+                model = safe_load(model_path, algo_cls)
+                if model is None:          # skip tickers whose model couldn’t be opened
                     continue
+                # ---------- END NEW ------
+
+                # Get the latest data point
+                latest_data = data_scaled.iloc[-1]
+
+                # Predict
+                action_value = get_action_value(
+                    model, latest_data, sentiment_score, economic_indicator)
+
+                decision, confidence = map_action_to_decision_confidence(action_value)
+
+                model_predictions.append({
+                    'Model': rl_algorithm,
+                    'Action Value': action_value,
+                    'Decision': decision,
+                    'Confidence': confidence
+                })
+
+            except (ValueError, FileNotFoundError) as e:
+                st.warning(f"Model file {model_path} could not be loaded: {e}")
+                continue
 
             if not model_predictions:
                 # If no predictions were made
