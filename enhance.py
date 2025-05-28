@@ -749,6 +749,19 @@ def main():
     st.sidebar.write(
         f"Economic Indicator (FEDFUNDS): {economic_indicator:.2f}%")
 
+    # Add disclaimer
+    st.sidebar.markdown("""
+    ---
+    ### ⚠️ Disclaimer
+
+    This application is provided for **educational and informational purposes only** and does not constitute financial, investment, or trading advice.  
+    Any decisions based on the output of this tool are **made at your own risk**.  
+    The developer is **not liable** for any losses or damages resulting from use of this application.
+
+    ---
+    """)
+
+
     # Display headlines
     if st.sidebar.checkbox("Show Latest News Headlines"):
         st.subheader("Latest News Headlines")
