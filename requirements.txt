@@ -10,7 +10,10 @@ deap
 scikit-optimize
 textblob
 tensorflow
+torch
 joblib
 transformers
 keras-tuner
 matplotlib
+stable-baselines3
+streamlit-option-menu
