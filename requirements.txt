@@ -14,12 +14,3 @@ joblib
 transformers
 keras-tuner
 matplotlib
-torch
-torch_geometric
-stable-baselines3
-gym
-hmmlearn
-torchdiffeq
-shimmy>=2.0
-transformers
-stable-baselines3
